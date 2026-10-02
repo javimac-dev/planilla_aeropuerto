@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:signature/signature.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 class PantallaFormulario extends StatefulWidget {
   const PantallaFormulario({Key? key}) : super(key: key);
@@ -27,6 +31,13 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
   final TextEditingController _destinoController = TextEditingController();
   final TextEditingController _asisteController = TextEditingController();
 
+  // Controlador para el recuadro de firma digital
+  final SignatureController _signatureController = SignatureController(
+    penColor: Colors.black,
+    penStrokeWidth: 3,
+    exportBackgroundColor: Colors.white,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -34,16 +45,13 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     _inicializarDatosAutomaticos();
   }
 
-  // Carga fecha del sistema (Nativa de Dart) y valores guardados localmente
   void _inicializarDatosAutomaticos() async {
-    // 1. Fecha actual del sistema formateada DD-MM-AAAA sin librerías externas
     final ahora = DateTime.now();
     final dia = ahora.day.toString().padLeft(2, '0');
     final mes = ahora.month.toString().padLeft(2, '0');
     final anio = ahora.year.toString();
     _fechaController.text = "$dia-$mes-$anio";
 
-    // 2. Cargar datos persistentes de disco (SharedPreferences)
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _marcaController.text = prefs.getString('vehiculo_marca') ?? '';
@@ -51,7 +59,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     });
   }
 
-  // Guardar Marca y Placa en disco al modificarse
   Future<void> _guardarDatoPersistente(String clave, String valor) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(clave, valor);
@@ -70,6 +77,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     _origenController.dispose();
     _destinoController.dispose();
     _asisteController.dispose();
+    _signatureController.dispose();
     super.dispose();
   }
 
@@ -217,21 +225,147 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
               controller: _asisteController,
               nombreCampo: "Asiste",
             ),
+            
             const SizedBox(height: 30),
+            const Divider(thickness: 2),
+            const SizedBox(height: 10),
 
-            // Botón de guardar / generar planilla
+            // SECCIÓN DE FIRMA DIGITAL
+            const Text(
+              "Firma del Pasajero",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Signature(
+                  controller: _signatureController,
+                  height: 150,
+                  backgroundColor: Colors.grey[200]!,
+                ),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () => _signatureController.clear(),
+              icon: const Icon(Icons.clear, size: 18),
+              label: const Text("Limpiar firma"),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Botón de guardar planilla y generar PDF
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () {
-                print("Planilla lista para procesar");
+              onPressed: () async {
+                // 1. Validar firma obligatoria
+                if (_signatureController.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Por favor solicite la firma del pasajero')),
+                  );
+                  return;
+                }
+
+                // 2. Obtener la imagen de la firma en bytes
+                final signatureBytes = await _signatureController.toPngBytes();
+                if (signatureBytes == null) return;
+
+                // 3. Formatear la fecha ingresada (DD-MM-AAAA) a AAMMDD para el nombre del archivo
+                String fechaTexto = _fechaController.text.trim();
+                String fechaAAMMDD = "000000";
+                try {
+                  List<String> partes = fechaTexto.split('-');
+                  if (partes.length == 3) {
+                    String dia = partes[0];
+                    String mes = partes[1];
+                    String anio = partes[2];
+                    if (anio.length == 4) {
+                      anio = anio.substring(2);
+                    }
+                    fechaAAMMDD = "$anio$mes$dia";
+                  }
+                } catch (e) {
+                  print("Error formateando fecha para el archivo: $e");
+                }
+
+                // 4. Obtener número de expediente
+                String expedienteTexto = _expedienteController.text.trim();
+                if (expedienteTexto.isEmpty) expedienteTexto = "SinuNumero";
+
+                // 5. Construir nombre del archivo: planilla_aeropuerto_AAMMDD_ex12345.pdf
+                final String nombreArchivo = "planilla_aeropuerto_${fechaAAMMDD}_ex$expedienteTexto.pdf";
+
+                // 6. Diseñar el contenido del documento PDF
+                final pdf = pw.Document();
+                pdf.addPage(
+                  pw.Page(
+                    build: (pw.Context context) {
+                      return pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            "PLANILLA DE SERVICIO - AEROPUERTO",
+                            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+                          ),
+                          pw.SizedBox(height: 15),
+                          pw.Divider(),
+                          pw.SizedBox(height: 10),
+                          
+                          _construirFilaPdf("Fecha:", _fechaController.text),
+                          _construirFilaPdf("Expediente:", _expedienteController.text),
+                          _construirFilaPdf("Marca del Vehículo:", _marcaController.text),
+                          _construirFilaPdf("Placa:", _placaController.text),
+                          _construirFilaPdf("Asegurado:", _aseguradoController.text),
+                          _construirFilaPdf("Celular:", _celularController.text),
+                          _construirFilaPdf("Vencimiento SOAT:", _soatController.text),
+                          _construirFilaPdf("Efectivo:", _efectivoController.text),
+                          _construirFilaPdf("Origen:", _origenController.text),
+                          _construirFilaPdf("Destino:", _destinoController.text),
+                          _construirFilaPdf("Asiste:", _asisteController.text),
+
+                          pw.SizedBox(height: 25),
+                          pw.Text("Firma del Pasajero:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                          pw.SizedBox(height: 10),
+                          
+                          pw.Container(
+                            height: 100,
+                            width: 200,
+                            decoration: pw.BoxDecoration(
+                              border: pw.Border.all(color: PdfColors.grey),
+                            ),
+                            child: pw.Image(
+                              pw.MemoryImage(signatureBytes),
+                              fit: pw.BoxFit.contain,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                );
+
+                // 7. Lanzar el diálogo nativo para guardar o compartir el PDF
+                await Printing.sharePdf(
+                  bytes: await pdf.save(),
+                  filename: nombreArchivo,
+                );
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Generando PDF: $nombreArchivo')),
+                );
               },
               icon: const Icon(Icons.save),
               label: const Text("Guardar Planilla", style: TextStyle(fontSize: 18)),
             ),
+            const SizedBox(height: 40),
           ],
         ),
       ),
@@ -272,6 +406,24 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 },
               )
             : null,
+      ),
+    );
+  }
+
+  // Método auxiliar para estructurar las filas dentro del PDF
+  pw.Widget _construirFilaPdf(String etiqueta, String valor) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 3),
+      child: pw.Row(
+        children: [
+          pw.SizedBox(
+            width: 130,
+            child: pw.Text(etiqueta, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.Expanded(
+            child: pw.Text(valor.isEmpty ? "-" : valor),
+          ),
+        ],
       ),
     );
   }

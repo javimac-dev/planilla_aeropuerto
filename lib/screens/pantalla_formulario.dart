@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // <-- 1. Importante para los filtros de entrada
+import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signature/signature.dart';
@@ -57,6 +57,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     setState(() {
       _marcaController.text = prefs.getString('vehiculo_marca') ?? '';
       _placaController.text = prefs.getString('vehiculo_placa') ?? '';
+      _asisteController.text = prefs.getString('servicio_asiste') ?? '';
     });
   }
 
@@ -222,121 +223,153 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 ),
               ),
 
-            // 1. Fecha (Con DatePicker y validación cruzada de efectivo)
-            TextField(
-              controller: _fechaController,
-              readOnly: true,
-              onTap: () => _seleccionarFecha(context, _fechaController),
-              decoration: InputDecoration(
-                labelText: "Fecha (DD-MM-AAAA)",
-                border: const OutlineInputBorder(),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(Icons.calendar_today, color: Colors.indigo.shade700),
-                  onPressed: () => _seleccionarFecha(context, _fechaController),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
+            // ==========================================
+            // GRUPO 1: DATOS DEL PRESTADOR / VEHÍCULO
+            // ==========================================
+            _construirTituloSeccion("Datos del Prestador"),
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    // Marca del Vehículo (Persistente)
+                    _construirCampoConMic(
+                      label: "Marca del Vehículo",
+                      controller: _marcaController,
+                      nombreCampo: "Marca",
+                      onChanged: (valor) => _guardarDatoPersistente('vehiculo_marca', valor),
+                    ),
+                    const SizedBox(height: 14),
 
-            // 2. Expediente
-            _construirCampoConMic(
-              label: "Expediente",
-              controller: _expedienteController,
-              nombreCampo: "Expediente",
-            ),
-            const SizedBox(height: 14),
+                    // Placa (Persistente)
+                    _construirCampoConMic(
+                      label: "Placa",
+                      controller: _placaController,
+                      nombreCampo: "Placa",
+                      onChanged: (valor) => _guardarDatoPersistente('vehiculo_placa', valor),
+                    ),
+                    const SizedBox(height: 14),
 
-            // 3. Marca (Persistente)
-            _construirCampoConMic(
-              label: "Marca del Vehículo",
-              controller: _marcaController,
-              nombreCampo: "Marca",
-              onChanged: (valor) => _guardarDatoPersistente('vehiculo_marca', valor),
-            ),
-            const SizedBox(height: 14),
+                    // Vencimiento SOAT (Con DatePicker y validación cruzada)
+                    TextField(
+                      controller: _soatController,
+                      readOnly: true,
+                      onTap: () => _seleccionarFecha(context, _soatController),
+                      decoration: InputDecoration(
+                        labelText: "Vencimiento SOAT (DD-MM-AAAA)",
+                        border: const OutlineInputBorder(),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(Icons.calendar_today, color: Colors.indigo.shade700),
+                          onPressed: () => _seleccionarFecha(context, _soatController),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
 
-            // 4. Placa (Persistente)
-            _construirCampoConMic(
-              label: "Placa",
-              controller: _placaController,
-              nombreCampo: "Placa",
-              onChanged: (valor) => _guardarDatoPersistente('vehiculo_placa', valor),
-            ),
-            const SizedBox(height: 14),
+                    // Efectivo (Automático según las fechas)
+                    _construirCampoConMic(
+                      label: "Efectivo (SI / NO)",
+                      controller: _efectivoController,
+                      nombreCampo: "Efectivo",
+                      habilitarMic: false,
+                    ),
+                    const SizedBox(height: 14),
 
-            // 5. Asegurado
-            _construirCampoConMic(
-              label: "Asegurado",
-              controller: _aseguradoController,
-              nombreCampo: "Asegurado",
-            ),
-            const SizedBox(height: 14),
-
-            // 6. Celular (Tablero numérico y solo dígitos permitidos)
-            _construirCampoConMic(
-              label: "Celular",
-              controller: _celularController,
-              nombreCampo: "Celular",
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(10), // Opcional: limita a 10 dígitos
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            // 7. Vencimiento SOAT (Con DatePicker y validación cruzada de efectivo)
-            TextField(
-              controller: _soatController,
-              readOnly: true,
-              onTap: () => _seleccionarFecha(context, _soatController),
-              decoration: InputDecoration(
-                labelText: "Vencimiento SOAT (DD-MM-AAAA)",
-                border: const OutlineInputBorder(),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(Icons.calendar_today, color: Colors.indigo.shade700),
-                  onPressed: () => _seleccionarFecha(context, _soatController),
+                    // Asiste (Persistente)
+                    _construirCampoConMic(
+                      label: "Asiste",
+                      controller: _asisteController,
+                      nombreCampo: "Asiste",
+                      onChanged: (valor) => _guardarDatoPersistente('servicio_asiste', valor),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 14),
 
-            // 8. Efectivo (Automático según las fechas)
-            _construirCampoConMic(
-              label: "Efectivo (SI / NO)",
-              controller: _efectivoController,
-              nombreCampo: "Efectivo",
-              habilitarMic: false,
-            ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 20),
 
-            // 9. Origen
-            _construirCampoConMic(
-              label: "Origen",
-              controller: _origenController,
-              nombreCampo: "Origen",
-            ),
-            const SizedBox(height: 14),
+            // ==========================================
+            // GRUPO 2: DATOS DEL SERVICIO
+            // ==========================================
+            _construirTituloSeccion("Datos del Servicio"),
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    // Fecha (Con DatePicker y validación cruzada)
+                    TextField(
+                      controller: _fechaController,
+                      readOnly: true,
+                      onTap: () => _seleccionarFecha(context, _fechaController),
+                      decoration: InputDecoration(
+                        labelText: "Fecha (DD-MM-AAAA)",
+                        border: const OutlineInputBorder(),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(Icons.calendar_today, color: Colors.indigo.shade700),
+                          onPressed: () => _seleccionarFecha(context, _fechaController),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
 
-            // 10. Destino
-            _construirCampoConMic(
-              label: "Destino",
-              controller: _destinoController,
-              nombreCampo: "Destino",
-            ),
-            const SizedBox(height: 14),
+                    // Expediente
+                    _construirCampoConMic(
+                      label: "Expediente",
+                      controller: _expedienteController,
+                      nombreCampo: "Expediente",
+                    ),
+                    const SizedBox(height: 14),
 
-            // 11. Asiste
-            _construirCampoConMic(
-              label: "Asiste",
-              controller: _asisteController,
-              nombreCampo: "Asiste",
+                    // Asegurado
+                    _construirCampoConMic(
+                      label: "Asegurado",
+                      controller: _aseguradoController,
+                      nombreCampo: "Asegurado",
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Celular (Numérico estricto, máximo 10 caracteres)
+                    _construirCampoConMic(
+                      label: "Celular",
+                      controller: _celularController,
+                      nombreCampo: "Celular",
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Origen
+                    _construirCampoConMic(
+                      label: "Origen",
+                      controller: _origenController,
+                      nombreCampo: "Origen",
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Destino
+                    _construirCampoConMic(
+                      label: "Destino",
+                      controller: _destinoController,
+                      nombreCampo: "Destino",
+                    ),
+                  ],
+                ),
+              ),
             ),
             
             const SizedBox(height: 30),
@@ -382,6 +415,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 ),
               ),
               onPressed: () async {
+                // 1. Validar firma obligatoria
                 if (_signatureController.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Por favor solicite la firma del pasajero')),
@@ -389,9 +423,11 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   return;
                 }
 
+                // 2. Obtener la imagen de la firma en bytes
                 final signatureBytes = await _signatureController.toPngBytes();
                 if (signatureBytes == null) return;
 
+                // 3. Formatear la fecha ingresada (DD-MM-AAAA) a AAMMDD para el nombre del archivo
                 String fechaTexto = _fechaController.text.trim();
                 String fechaAAMMDD = "000000";
                 try {
@@ -409,11 +445,14 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   print("Error formateando fecha para el archivo: $e");
                 }
 
+                // 4. Obtener número de expediente
                 String expedienteTexto = _expedienteController.text.trim();
                 if (expedienteTexto.isEmpty) expedienteTexto = "SinuNumero";
 
+                // 5. Construir nombre del archivo: planilla_aeropuerto_AAMMDD_ex12345.pdf
                 final String nombreArchivo = "planilla_aeropuerto_${fechaAAMMDD}_ex$expedienteTexto.pdf";
 
+                // 6. Diseñar el contenido del documento PDF
                 final pdf = pw.Document();
                 pdf.addPage(
                   pw.Page(
@@ -462,6 +501,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   ),
                 );
 
+                // 7. Lanzar el diálogo nativo para guardar o compartir el PDF
                 await Printing.sharePdf(
                   bytes: await pdf.save(),
                   filename: nombreArchivo,
@@ -476,6 +516,21 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
             ),
             const SizedBox(height: 40),
           ],
+        ),
+      ),
+    );
+  }
+
+  // Widget auxiliar para los títulos de sección
+  Widget _construirTituloSeccion(String titulo) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0, top: 8.0, left: 4.0),
+      child: Text(
+        titulo,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Colors.indigo.shade800,
         ),
       ),
     );
@@ -526,6 +581,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     );
   }
 
+  // Método auxiliar para estructurar las filas dentro del PDF
   pw.Widget _construirFilaPdf(String etiqueta, String valor) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(vertical: 3),

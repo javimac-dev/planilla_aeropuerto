@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/pantalla_voz.dart';
+import 'screens/pantalla_formulario.dart';
 
 void main() {
   runApp(const PlanillaAeropuertoApp());
@@ -17,7 +17,7 @@ class PlanillaAeropuertoApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
         useMaterial3: true,
       ),
-      home: const PantallaVoz(),
+      home: PantallaFormulario(),
     );
   }
 }

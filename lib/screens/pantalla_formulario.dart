@@ -32,11 +32,11 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
   final TextEditingController _destinoController = TextEditingController();
   final TextEditingController _asisteController = TextEditingController();
 
-  // Controlador para el recuadro de firma digital
+  // Controlador para el recuadro de firma digital (con exportBackgroundColor transparente para evitar cajas)
   final SignatureController _signatureController = SignatureController(
     penColor: Colors.black,
     penStrokeWidth: 3,
-    exportBackgroundColor: Colors.white,
+    exportBackgroundColor: Colors.transparent,
   );
 
   final String _textoDisclaimer = 
@@ -382,13 +382,12 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
             const Divider(thickness: 2),
             const SizedBox(height: 10),
 
-            // SECCIÓN DE FIRMA Y DISCLAIMER INTERmedio
+            // SECCIÓN DE FIRMA Y DISCLAIMER
             const Text(
               "Firma del Pasajero",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            // Disclaimer en letra muy pequeña ubicado exactamente entre el título y la firma
             Text(
               _textoDisclaimer,
               style: const TextStyle(fontSize: 9, color: Colors.grey, height: 1.2),
@@ -547,17 +546,27 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                             ),
                             textAlign: pw.TextAlign.justify,
                           ),
-                          pw.SizedBox(height: 10),
-                          pw.Container(
-                            height: 80,
+                          pw.SizedBox(height: 15),
+                          
+                          // Imagen limpia sin cajas ni bordes
+                          pw.SizedBox(
+                            height: 60,
                             width: 160,
-                            decoration: pw.BoxDecoration(
-                              border: pw.Border.all(color: PdfColors.grey600),
-                            ),
                             child: pw.Image(
                               pw.MemoryImage(signatureBytes),
                               fit: pw.BoxFit.contain,
                             ),
+                          ),
+                          
+                          // Línea guía tradicional inferior
+                          pw.Text(
+                            "________________________________________",
+                            style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+                          ),
+                          pw.SizedBox(height: 2),
+                          pw.Text(
+                            "Firma / Aceptado",
+                            style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
                           ),
                         ],
                       );
@@ -575,7 +584,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 );
               },
               icon: const Icon(Icons.save),
-              label: const Text("Guardar Planilla", style: TextStyle(fontSize: 18)),
+              label: const Text("Guardار Planilla", style: TextStyle(fontSize: 18)),
             ),
             const SizedBox(height: 40),
           ],

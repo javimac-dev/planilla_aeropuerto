@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // <-- 1. Importante para los filtros de entrada
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signature/signature.dart';
@@ -274,11 +275,16 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
             ),
             const SizedBox(height: 14),
 
-            // 6. Celular
+            // 6. Celular (Tablero numérico y solo dígitos permitidos)
             _construirCampoConMic(
               label: "Celular",
               controller: _celularController,
               nombreCampo: "Celular",
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10), // Opcional: limita a 10 dígitos
+              ],
             ),
             const SizedBox(height: 14),
 
@@ -306,7 +312,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
               label: "Efectivo (SI / NO)",
               controller: _efectivoController,
               nombreCampo: "Efectivo",
-              habilitarMic: false, // Es calculado por el sistema
+              habilitarMic: false,
             ),
             const SizedBox(height: 14),
 
@@ -376,7 +382,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 ),
               ),
               onPressed: () async {
-                // 1. Validar firma obligatoria
                 if (_signatureController.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Por favor solicite la firma del pasajero')),
@@ -384,11 +389,9 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   return;
                 }
 
-                // 2. Obtener la imagen de la firma en bytes
                 final signatureBytes = await _signatureController.toPngBytes();
                 if (signatureBytes == null) return;
 
-                // 3. Formatear la fecha ingresada (DD-MM-AAAA) a AAMMDD para el nombre del archivo
                 String fechaTexto = _fechaController.text.trim();
                 String fechaAAMMDD = "000000";
                 try {
@@ -406,14 +409,11 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   print("Error formateando fecha para el archivo: $e");
                 }
 
-                // 4. Obtener número de expediente
                 String expedienteTexto = _expedienteController.text.trim();
                 if (expedienteTexto.isEmpty) expedienteTexto = "SinuNumero";
 
-                // 5. Construir nombre del archivo: planilla_aeropuerto_AAMMDD_ex12345.pdf
                 final String nombreArchivo = "planilla_aeropuerto_${fechaAAMMDD}_ex$expedienteTexto.pdf";
 
-                // 6. Diseñar el contenido del documento PDF
                 final pdf = pw.Document();
                 pdf.addPage(
                   pw.Page(
@@ -462,7 +462,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   ),
                 );
 
-                // 7. Lanzar el diálogo nativo para guardar o compartir el PDF
                 await Printing.sharePdf(
                   bytes: await pdf.save(),
                   filename: nombreArchivo,
@@ -488,12 +487,16 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     required String nombreCampo,
     bool habilitarMic = true,
     Function(String)? onChanged,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     bool esteCampoEstaEscuchando = _isListening && _campoActivo == nombreCampo;
 
     return TextField(
       controller: controller,
       onChanged: onChanged,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
@@ -523,7 +526,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     );
   }
 
-  // Método auxiliar para estructurar las filas dentro del PDF
   pw.Widget _construirFilaPdf(String etiqueta, String valor) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(vertical: 3),

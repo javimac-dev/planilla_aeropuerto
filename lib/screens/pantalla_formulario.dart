@@ -21,7 +21,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
 
   // Controladores de texto para todos los campos
   final TextEditingController _fechaController = TextEditingController();
-  final TextEditingController _horaController = TextEditingController(); // <-- Nueva caja de hora independiente
+  final TextEditingController _horaController = TextEditingController();
   final TextEditingController _expedienteController = TextEditingController();
   final TextEditingController _marcaController = TextEditingController();
   final TextEditingController _placaController = TextEditingController();
@@ -54,22 +54,17 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     _inicializarDatosAutomaticos();
   }
 
+  // Inicializa la fecha con el sistema, deja la hora en blanco y carga los datos del prestador
   void _inicializarDatosAutomaticos() async {
     final ahora = DateTime.now();
     final dia = ahora.day.toString().padLeft(2, '0');
     final mes = ahora.month.toString().padLeft(2, '0');
     final anio = ahora.year.toString();
-    
-    // Asignar fecha limpia (DD-MM-AAAA)
-    _fechaController.text = "$dia-$mes-$anio";
 
-    // Asignar hora inicial en formato 12h (A.M. / P.M.)
-    int hora24 = ahora.hour;
-    int minuto = ahora.minute;
-    String periodo = hora24 >= 12 ? 'P.M.' : 'A.M.';
-    int hora12 = hora24 % 12;
-    if (hora12 == 0) hora12 = 12;
-    _horaController.text = "${hora12.toString().padLeft(2, '0')}:${minuto.toString().padLeft(2, '0')} $periodo";
+    setState(() {
+      _fechaController.text = "$dia-$mes-$anio";
+      _horaController.text = ""; // Hora vacía por defecto
+    });
 
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -78,7 +73,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
       _soatController.text = prefs.getString('vehiculo_soat') ?? '';
       _asisteController.text = prefs.getString('servicio_asiste') ?? '';
     });
-
     _evaluarEfectivoSegunSoat();
   }
 
@@ -383,7 +377,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    // Caja Fecha del Servicio
                     TextField(
                       controller: _fechaController,
                       readOnly: true,
@@ -401,7 +394,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    // Caja Hora independiente con formato am/pm
                     TextField(
                       controller: _horaController,
                       readOnly: true,
@@ -660,29 +652,24 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   filename: nombreArchivo,
                 );
 
-                // ================= LIMPIAR CAMPOS DEL SERVICIO TRAS GENERAR PDF =================
+                // ================= RESTABLECER DESPUÉS DE GUARDAR =================
+                final ahoraPost = DateTime.now();
+                final diaPost = ahoraPost.day.toString().padLeft(2, '0');
+                final mesPost = ahoraPost.month.toString().padLeft(2, '0');
+                final anioPost = ahoraPost.year.toString();
+
                 setState(() {
+                  _fechaController.text = "$diaPost-$mesPost-$anioPost"; // Fecha vuelve a la del sistema
+                  _horaController.clear(); // Limpia explícitamente la hora junto al grupo de servicio
                   _expedienteController.clear();
                   _aseguradoController.clear();
                   _celularController.clear();
                   _origenController.clear();
                   _destinoController.clear();
                   _signatureController.clear();
-                  
-                  // Restablecer fecha y hora actuales
-                  final ahora = DateTime.now();
-                  final dia = ahora.day.toString().padLeft(2, '0');
-                  final mes = ahora.month.toString().padLeft(2, '0');
-                  final anio = ahora.year.toString();
-                  _fechaController.text = "$dia-$mes-$anio";
-
-                  int hora24 = ahora.hour;
-                  int minuto = ahora.minute;
-                  String periodo = hora24 >= 12 ? 'P.M.' : 'A.M.';
-                  int hora12 = hora24 % 12;
-                  if (hora12 == 0) hora12 = 12;
-                  _horaController.text = "${hora12.toString().padLeft(2, '0')}:${minuto.toString().padLeft(2, '0')} $periodo";
                 });
+                
+                _evaluarEfectivoSegunSoat();
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Planilla generada y formulario reiniciado: $nombreArchivo')),

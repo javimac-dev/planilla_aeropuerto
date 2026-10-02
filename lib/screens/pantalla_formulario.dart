@@ -39,6 +39,13 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     exportBackgroundColor: Colors.white,
   );
 
+  final String _textoDisclaimer = 
+      "Recibo a plena satisfacción y de acuerdo con las condiciones aquí señaladas el automotor identificado en el presente documento y "
+      "que en consecuencia renuncio expresamente a presentar cualquier reclamación y objeción relacionada a la inexactitud de la "
+      "información aquí indicada. De igual manera declaro que se ha examinado detalladamente la información suministrada en el presente "
+      "documento por el cual asumo plena responsabilidad en lo entendido que la información que se indica con respecto al vehículo es "
+      "precisa, completa y corresponde a la realidad del momento";
+
   @override
   void initState() {
     super.initState();
@@ -375,12 +382,19 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
             const Divider(thickness: 2),
             const SizedBox(height: 10),
 
-            // SECCIÓN DE FIRMA DIGITAL
+            // SECCIÓN DE FIRMA Y DISCLAIMER INTERmedio
             const Text(
               "Firma del Pasajero",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
+            // Disclaimer en letra muy pequeña ubicado exactamente entre el título y la firma
+            Text(
+              _textoDisclaimer,
+              style: const TextStyle(fontSize: 9, color: Colors.grey, height: 1.2),
+              textAlign: TextAlign.justify,
+            ),
+            const SizedBox(height: 10),
             Container(
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey),
@@ -467,7 +481,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: pw.CrossAxisAlignment.center,
                             children: [
-                              // Logo a la izquierda
                               if (logoImage != null)
                                 pw.Container(
                                   width: 70,
@@ -477,7 +490,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                               else
                                 pw.Container(width: 70, height: 70, child: pw.Text("2M Global", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12))),
                               
-                              // Título principal centrado o a la derecha
                               pw.Expanded(
                                 child: pw.Center(
                                   child: pw.Text(
@@ -518,17 +530,27 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                             ],
                           ),
 
-                          pw.SizedBox(height: 25),
+                          pw.SizedBox(height: 15),
 
-                          // ================= SECCIÓN DE FIRMA =================
+                          // ================= SECCIÓN DE FIRMA Y DISCLAIMER EN EL PDF =================
                           pw.Text(
                             "Firma del Pasajero:",
-                            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+                            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
                           ),
-                          pw.SizedBox(height: 8),
+                          pw.SizedBox(height: 6),
+                          pw.Text(
+                            _textoDisclaimer,
+                            style: pw.TextStyle(
+                              fontSize: 7.5,
+                              color: PdfColors.grey700,
+                              lineSpacing: 1.2,
+                            ),
+                            textAlign: pw.TextAlign.justify,
+                          ),
+                          pw.SizedBox(height: 10),
                           pw.Container(
-                            height: 90,
-                            width: 180,
+                            height: 80,
+                            width: 160,
                             decoration: pw.BoxDecoration(
                               border: pw.Border.all(color: PdfColors.grey600),
                             ),

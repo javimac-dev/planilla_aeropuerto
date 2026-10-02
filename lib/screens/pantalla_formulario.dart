@@ -64,6 +64,79 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     await prefs.setString(clave, valor);
   }
 
+  // Función para evaluar si la fecha del SOAT es posterior o igual a la fecha del servicio
+  void _evaluarEfectivoSegunSoat() {
+    String fechaServicioTexto = _fechaController.text.trim();
+    String soatTexto = _soatController.text.trim();
+    
+    if (fechaServicioTexto.isEmpty || soatTexto.isEmpty) return;
+
+    try {
+      // Parsear fecha del servicio
+      List<String> partesFecha = fechaServicioTexto.split('-');
+      DateTime fechaServicio = DateTime(
+        int.parse(partesFecha[2]),
+        int.parse(partesFecha[1]),
+        int.parse(partesFecha[0]),
+      );
+      DateTime fechaServicioLimpia = DateTime(fechaServicio.year, fechaServicio.month, fechaServicio.day);
+
+      // Parsear fecha del SOAT
+      List<String> partesSoat = soatTexto.split('-');
+      DateTime fechaSoat = DateTime(
+        int.parse(partesSoat[2]),
+        int.parse(partesSoat[1]),
+        int.parse(partesSoat[0]),
+      );
+      DateTime fechaSoatLimpia = DateTime(fechaSoat.year, fechaSoat.month, fechaSoat.day);
+
+      // Si el SOAT es posterior o igual a la fecha del servicio -> SI, de lo contrario -> NO
+      bool esEfectivo = fechaSoatLimpia.isAfter(fechaServicioLimpia) || fechaSoatLimpia.isAtSameMomentAs(fechaServicioLimpia);
+
+      setState(() {
+        _efectivoController.text = esEfectivo ? "SI" : "NO";
+      });
+    } catch (e) {
+      print("Error evaluando fechas para efectivo: $e");
+    }
+  }
+
+  // Función genérica para mostrar el selector de fecha (DatePicker)
+  Future<void> _seleccionarFecha(BuildContext context, TextEditingController controller) async {
+    DateTime fechaActual = DateTime.now();
+    
+    try {
+      List<String> partes = controller.text.split('-');
+      if (partes.length == 3) {
+        fechaActual = DateTime(
+          int.parse(partes[2]),
+          int.parse(partes[1]),
+          int.parse(partes[0]),
+        );
+      }
+    } catch (_) {}
+
+    final DateTime? fechaSeleccionada = await showDatePicker(
+      context: context,
+      initialDate: fechaActual,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+    );
+
+    if (fechaSeleccionada != null) {
+      final dia = fechaSeleccionada.day.toString().padLeft(2, '0');
+      final mes = fechaSeleccionada.month.toString().padLeft(2, '0');
+      final anio = fechaSeleccionada.year.toString();
+      
+      setState(() {
+        controller.text = "$dia-$mes-$anio";
+      });
+
+      // Validar el efectivo cada vez que cambie CUALQUIERA de las dos fechas
+      _evaluarEfectivoSegunSoat();
+    }
+  }
+
   @override
   void dispose() {
     _fechaController.dispose();
@@ -118,17 +191,29 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Planilla de Servicio - Aeropuerto'),
+        title: const Text(
+          'Planilla de Servicio - Aeropuerto',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        backgroundColor: Colors.indigo.shade700,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 4,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: ListView(
           children: [
+            const SizedBox(height: 16),
+
             if (_isListening)
               Container(
                 padding: const EdgeInsets.all(8),
                 margin: const EdgeInsets.only(bottom: 16),
-                color: Colors.red[100],
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  border: Border.all(color: Colors.red.shade200),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Text(
                   "Escuchando para: $_campoActivo...",
                   style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
@@ -136,12 +221,22 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 ),
               ),
 
-            // 1. Fecha (Sistema)
-            _construirCampoConMic(
-              label: "Fecha (DD-MM-AAAA)",
+            // 1. Fecha (Con DatePicker y validación cruzada de efectivo)
+            TextField(
               controller: _fechaController,
-              nombreCampo: "Fecha",
-              habilitarMic: false,
+              readOnly: true,
+              onTap: () => _seleccionarFecha(context, _fechaController),
+              decoration: InputDecoration(
+                labelText: "Fecha (DD-MM-AAAA)",
+                border: const OutlineInputBorder(),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
+                ),
+                suffixIcon: IconButton(
+                  icon: Icon(Icons.calendar_today, color: Colors.indigo.shade700),
+                  onPressed: () => _seleccionarFecha(context, _fechaController),
+                ),
+              ),
             ),
             const SizedBox(height: 14),
 
@@ -187,19 +282,31 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
             ),
             const SizedBox(height: 14),
 
-            // 7. Vencimiento SOAT
-            _construirCampoConMic(
-              label: "Vencimiento SOAT (DD-MM-AAAA)",
+            // 7. Vencimiento SOAT (Con DatePicker y validación cruzada de efectivo)
+            TextField(
               controller: _soatController,
-              nombreCampo: "SOAT",
+              readOnly: true,
+              onTap: () => _seleccionarFecha(context, _soatController),
+              decoration: InputDecoration(
+                labelText: "Vencimiento SOAT (DD-MM-AAAA)",
+                border: const OutlineInputBorder(),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
+                ),
+                suffixIcon: IconButton(
+                  icon: Icon(Icons.calendar_today, color: Colors.indigo.shade700),
+                  onPressed: () => _seleccionarFecha(context, _soatController),
+                ),
+              ),
             ),
             const SizedBox(height: 14),
 
-            // 8. Efectivo (Sí/No)
+            // 8. Efectivo (Automático según las fechas)
             _construirCampoConMic(
               label: "Efectivo (SI / NO)",
               controller: _efectivoController,
               nombreCampo: "Efectivo",
+              habilitarMic: false, // Es calculado por el sistema
             ),
             const SizedBox(height: 14),
 
@@ -262,8 +369,11 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
-                backgroundColor: Colors.blue,
+                backgroundColor: Colors.indigo.shade700,
                 foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onPressed: () async {
                 // 1. Validar firma obligatoria
@@ -387,6 +497,9 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
+        ),
         suffixIcon: habilitarMic
             ? IconButton(
                 icon: Icon(

@@ -54,7 +54,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     _inicializarDatosAutomaticos();
   }
 
-  // Inicializa la fecha con el sistema, deja la hora en blanco y carga los datos del prestador
   void _inicializarDatosAutomaticos() async {
     final ahora = DateTime.now();
     final dia = ahora.day.toString().padLeft(2, '0');
@@ -63,7 +62,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
 
     setState(() {
       _fechaController.text = "$dia-$mes-$anio";
-      _horaController.text = ""; // Hora vacía por defecto
+      _horaController.text = "";
     });
 
     final prefs = await SharedPreferences.getInstance();
@@ -83,6 +82,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     await prefs.setString('vehiculo_soat', _soatController.text.trim());
     await prefs.setString('servicio_asiste', _asisteController.text.trim());
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Datos del prestador guardados correctamente')),
     );
@@ -118,7 +118,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
         _efectivoController.text = esEfectivo ? "SI" : "NO";
       });
     } catch (e) {
-      print("Error evaluando fechas para efectivo: $e");
+      debugPrint("Error evaluando fechas para efectivo: $e");
     }
   }
 
@@ -192,8 +192,8 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
 
   void _escucharParaCampo(TextEditingController controller, String nombreCampo, {Function(String)? onTextChanged}) async {
     bool disponible = await _speech.initialize(
-      onStatus: (val) => print('estado: $val'),
-      onError: (val) => print('error: $val'),
+      onStatus: (val) => debugPrint('estado: $val'),
+      onError: (val) => debugPrint('error: $val'),
     );
 
     if (disponible) {
@@ -418,7 +418,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                     ),
                     const SizedBox(height: 14),
                     _construirCampoConMic(
-                      label: "Asegurado",
+                      label: "Asegurado (Usuario)",
                       controller: _aseguradoController,
                       nombreCampo: "Asegurado",
                     ),
@@ -488,7 +488,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
 
             const SizedBox(height: 20),
 
-            // BOTÓN GUARDAR PLANILLA Y GENERAR PDF MAQUETADO
+            // BOTÓN GUARDAR PLANILLA Y GENERAR PDF CON FORMATO: AAMMDD nombreusuario expediente
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
@@ -500,6 +500,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
               ),
               onPressed: () async {
                 if (_signatureController.isEmpty) {
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Por favor solicite la firma del pasajero')),
                   );
@@ -509,6 +510,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 final signatureBytes = await _signatureController.toPngBytes();
                 if (signatureBytes == null) return;
 
+                // 1. Formatear Fecha a AAMMDD
                 String fechaTexto = _fechaController.text.trim();
                 String fechaAAMMDD = "000000";
                 try {
@@ -521,13 +523,21 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                     fechaAAMMDD = "$anio$mes$dia";
                   }
                 } catch (e) {
-                  print("Error formateando fecha para nombre de archivo: $e");
+                  debugPrint("Error formateando fecha para nombre de archivo: $e");
                 }
 
-                String expedienteTexto = _expedienteController.text.trim();
-                if (expedienteTexto.isEmpty) expedienteTexto = "SinuNumero";
+                // 2. Obtener Nombre del Usuario / Asegurado
+                String nombreUsuario = _aseguradoController.text.trim();
+                if (nombreUsuario.isEmpty) {
+                  nombreUsuario = "Usuario";
+                }
 
-                final String nombreArchivo = "planilla_aeropuerto_${fechaAAMMDD}_ex$expedienteTexto.pdf";
+                // 3. Obtener Expediente
+                String expedienteTexto = _expedienteController.text.trim();
+                if (expedienteTexto.isEmpty) expedienteTexto = "SinExpediente";
+
+                // 4. Nombre exacto solicitado: AAMMDD nombreusuario expediente.pdf
+                final String nombreArchivo = "$fechaAAMMDD $nombreUsuario $expedienteTexto.pdf";
 
                 // CARGAR LOGO DESDE ASSETS
                 pw.ImageProvider? logoImage;
@@ -535,7 +545,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   final imageByteData = await rootBundle.load('assets/images/logo_2m.png');
                   logoImage = pw.MemoryImage(imageByteData.buffer.asUint8List());
                 } catch (e) {
-                  print("No se pudo cargar el logo de assets: $e");
+                  debugPrint("No se pudo cargar el logo de assets: $e");
                 }
 
                 final pdf = pw.Document();
@@ -553,13 +563,17 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                             crossAxisAlignment: pw.CrossAxisAlignment.center,
                             children: [
                               if (logoImage != null)
-                                pw.Container(
+                                pw.SizedBox(
                                   width: 70,
                                   height: 70,
                                   child: pw.Image(logoImage, fit: pw.BoxFit.contain),
                                 )
                               else
-                                pw.Container(width: 70, height: 70, child: pw.Text("2M Global", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12))),
+                                pw.SizedBox(
+                                  width: 70,
+                                  height: 70,
+                                  child: pw.Text("2M Global", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+                                ),
                               
                               pw.Expanded(
                                 child: pw.Center(
@@ -659,8 +673,8 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 final anioPost = ahoraPost.year.toString();
 
                 setState(() {
-                  _fechaController.text = "$diaPost-$mesPost-$anioPost"; // Fecha vuelve a la del sistema
-                  _horaController.clear(); // Limpia explícitamente la hora junto al grupo de servicio
+                  _fechaController.text = "$diaPost-$mesPost-$anioPost";
+                  _horaController.clear();
                   _expedienteController.clear();
                   _aseguradoController.clear();
                   _celularController.clear();
@@ -671,8 +685,9 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 
                 _evaluarEfectivoSegunSoat();
 
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Planilla generada y formulario reiniciado: $nombreArchivo')),
+                  SnackBar(content: Text('Planilla generada: $nombreArchivo')),
                 );
               },
               icon: const Icon(Icons.save),

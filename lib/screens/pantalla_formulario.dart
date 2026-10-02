@@ -61,7 +61,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
       _asisteController.text = prefs.getString('servicio_asiste') ?? '';
     });
 
-    // Evaluar efectivo con los datos ya cargados
     _evaluarEfectivoSegunSoat();
   }
 
@@ -77,7 +76,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     );
   }
 
-  // Función para evaluar si la fecha del SOAT es posterior o igual a la fecha del servicio
   void _evaluarEfectivoSegunSoat() {
     String fechaServicioTexto = _fechaController.text.trim();
     String soatTexto = _soatController.text.trim();
@@ -85,7 +83,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     if (fechaServicioTexto.isEmpty || soatTexto.isEmpty) return;
 
     try {
-      // Parsear fecha del servicio
       List<String> partesFecha = fechaServicioTexto.split('-');
       DateTime fechaServicio = DateTime(
         int.parse(partesFecha[2]),
@@ -94,7 +91,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
       );
       DateTime fechaServicioLimpia = DateTime(fechaServicio.year, fechaServicio.month, fechaServicio.day);
 
-      // Parsear fecha del SOAT
       List<String> partesSoat = soatTexto.split('-');
       DateTime fechaSoat = DateTime(
         int.parse(partesSoat[2]),
@@ -103,7 +99,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
       );
       DateTime fechaSoatLimpia = DateTime(fechaSoat.year, fechaSoat.month, fechaSoat.day);
 
-      // Si el SOAT es posterior o igual a la fecha del servicio -> SI, de lo contrario -> NO
       bool esEfectivo = fechaSoatLimpia.isAfter(fechaServicioLimpia) || fechaSoatLimpia.isAtSameMomentAs(fechaServicioLimpia);
 
       setState(() {
@@ -114,7 +109,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     }
   }
 
-  // Función genérica para mostrar el selector de fecha (DatePicker)
   Future<void> _seleccionarFecha(BuildContext context, TextEditingController controller) async {
     DateTime fechaActual = DateTime.now();
     
@@ -145,7 +139,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
         controller.text = "$dia-$mes-$anio";
       });
 
-      // Validar el efectivo cada vez que cambie CUALQUIERA de las dos fechas
       _evaluarEfectivoSegunSoat();
     }
   }
@@ -234,9 +227,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 ),
               ),
 
-            // ==========================================
-            // GRUPO 1: DATOS DEL PRESTADOR / VEHÍCULO
-            // ==========================================
+            // GRUPO 1: DATOS DEL PRESTADOR
             _construirTituloSeccion("Datos del Prestador"),
             Card(
               elevation: 2,
@@ -245,23 +236,18 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    // Marca del Vehículo
                     _construirCampoConMic(
                       label: "Marca del Vehículo",
                       controller: _marcaController,
                       nombreCampo: "Marca",
                     ),
                     const SizedBox(height: 14),
-
-                    // Placa
                     _construirCampoConMic(
                       label: "Placa",
                       controller: _placaController,
                       nombreCampo: "Placa",
                     ),
                     const SizedBox(height: 14),
-
-                    // Vencimiento SOAT (Ahora precargado y persistente)
                     TextField(
                       controller: _soatController,
                       readOnly: true,
@@ -279,8 +265,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                       ),
                     ),
                     const SizedBox(height: 14),
-
-                    // Efectivo (Automático)
                     _construirCampoConMic(
                       label: "Efectivo (SI / NO)",
                       controller: _efectivoController,
@@ -288,16 +272,12 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                       habilitarMic: false,
                     ),
                     const SizedBox(height: 14),
-
-                    // Asiste
                     _construirCampoConMic(
                       label: "Asiste",
                       controller: _asisteController,
                       nombreCampo: "Asiste",
                     ),
                     const SizedBox(height: 16),
-
-                    // Botón para guardar todos los datos del prestador
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -326,9 +306,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
 
             const SizedBox(height: 20),
 
-            // ==========================================
             // GRUPO 2: DATOS DEL SERVICIO
-            // ==========================================
             _construirTituloSeccion("Datos del Servicio"),
             Card(
               elevation: 2,
@@ -337,7 +315,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    // Fecha
                     TextField(
                       controller: _fechaController,
                       readOnly: true,
@@ -355,24 +332,18 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                       ),
                     ),
                     const SizedBox(height: 14),
-
-                    // Expediente
                     _construirCampoConMic(
                       label: "Expediente",
                       controller: _expedienteController,
                       nombreCampo: "Expediente",
                     ),
                     const SizedBox(height: 14),
-
-                    // Asegurado
                     _construirCampoConMic(
                       label: "Asegurado",
                       controller: _aseguradoController,
                       nombreCampo: "Asegurado",
                     ),
                     const SizedBox(height: 14),
-
-                    // Celular
                     _construirCampoConMic(
                       label: "Celular",
                       controller: _celularController,
@@ -384,16 +355,12 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                       ],
                     ),
                     const SizedBox(height: 14),
-
-                    // Origen
                     _construirCampoConMic(
                       label: "Origen",
                       controller: _origenController,
                       nombreCampo: "Origen",
                     ),
                     const SizedBox(height: 14),
-
-                    // Destino
                     _construirCampoConMic(
                       label: "Destino",
                       controller: _destinoController,
@@ -436,7 +403,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
 
             const SizedBox(height: 20),
 
-            // Botón de guardar planilla y generar PDF
+            // BOTÓN GUARDAR PLANILLA Y GENERAR PDF MAQUETADO
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
@@ -465,13 +432,11 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                     String dia = partes[0];
                     String mes = partes[1];
                     String anio = partes[2];
-                    if (anio.length == 4) {
-                      anio = anio.substring(2);
-                    }
+                    if (anio.length == 4) anio = anio.substring(2);
                     fechaAAMMDD = "$anio$mes$dia";
                   }
                 } catch (e) {
-                  print("Error formateando fecha para el archivo: $e");
+                  print("Error formateando fecha: $e");
                 }
 
                 String expedienteTexto = _expedienteController.text.trim();
@@ -479,42 +444,93 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
 
                 final String nombreArchivo = "planilla_aeropuerto_${fechaAAMMDD}_ex$expedienteTexto.pdf";
 
+                // CARGAR LOGO DESDE ASSETS
+                pw.ImageProvider? logoImage;
+                try {
+                  final imageByteData = await rootBundle.load('assets/images/logo_2m.png');
+                  logoImage = pw.MemoryImage(imageByteData.buffer.asUint8List());
+                } catch (e) {
+                  print("No se pudo cargar el logo de assets: $e");
+                }
+
                 final pdf = pw.Document();
                 pdf.addPage(
                   pw.Page(
+                    pageFormat: PdfPageFormat.letter,
+                    margin: const pw.EdgeInsets.all(32),
                     build: (pw.Context context) {
                       return pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text(
-                            "PLANILLA DE SERVICIO - AEROPUERTO",
-                            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+                          // ================= ENCABEZADO CON LOGO Y TÍTULO =================
+                          pw.Row(
+                            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: pw.CrossAxisAlignment.center,
+                            children: [
+                              // Logo a la izquierda
+                              if (logoImage != null)
+                                pw.Container(
+                                  width: 70,
+                                  height: 70,
+                                  child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+                                )
+                              else
+                                pw.Container(width: 70, height: 70, child: pw.Text("2M Global", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12))),
+                              
+                              // Título principal centrado o a la derecha
+                              pw.Expanded(
+                                child: pw.Center(
+                                  child: pw.Text(
+                                    "SATISFACCIÓN DEL CLIENTE",
+                                    style: pw.TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: PdfColors.indigo800,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           pw.SizedBox(height: 15),
-                          pw.Divider(),
-                          pw.SizedBox(height: 10),
-                          
-                          _construirFilaPdf("Fecha:", _fechaController.text),
-                          _construirFilaPdf("Expediente:", _expedienteController.text),
-                          _construirFilaPdf("Marca del Vehículo:", _marcaController.text),
-                          _construirFilaPdf("Placa:", _placaController.text),
-                          _construirFilaPdf("Asegurado:", _aseguradoController.text),
-                          _construirFilaPdf("Celular:", _celularController.text),
-                          _construirFilaPdf("Vencimiento SOAT:", _soatController.text),
-                          _construirFilaPdf("Efectivo:", _efectivoController.text),
-                          _construirFilaPdf("Origen:", _origenController.text),
-                          _construirFilaPdf("Destino:", _destinoController.text),
-                          _construirFilaPdf("Asiste:", _asisteController.text),
+                          pw.Divider(thickness: 1.5, color: PdfColors.indigo800),
+                          pw.SizedBox(height: 15),
+
+                          // ================= TABLA DE DATOS =================
+                          pw.Table(
+                            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+                            columnWidths: {
+                              0: const pw.FlexColumnWidth(1.2),
+                              1: const pw.FlexColumnWidth(2),
+                            },
+                            children: [
+                              _construirFilaTablaPdf("Fecha del Servicio", _fechaController.text),
+                              _construirFilaTablaPdf("Expediente", _expedienteController.text),
+                              _construirFilaTablaPdf("Asegurado", _aseguradoController.text),
+                              _construirFilaTablaPdf("Celular", _celularController.text),
+                              _construirFilaTablaPdf("Origen", _origenController.text),
+                              _construirFilaTablaPdf("Destino", _destinoController.text),
+                              _construirFilaTablaPdf("Marca del Vehículo", _marcaController.text),
+                              _construirFilaTablaPdf("Placa", _placaController.text),
+                              _construirFilaTablaPdf("Vencimiento SOAT", _soatController.text),
+                              _construirFilaTablaPdf("Efectivo", _efectivoController.text),
+                              _construirFilaTablaPdf("Asistente / Conductor", _asisteController.text),
+                            ],
+                          ),
 
                           pw.SizedBox(height: 25),
-                          pw.Text("Firma del Pasajero:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                          pw.SizedBox(height: 10),
-                          
+
+                          // ================= SECCIÓN DE FIRMA =================
+                          pw.Text(
+                            "Firma del Pasajero:",
+                            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+                          ),
+                          pw.SizedBox(height: 8),
                           pw.Container(
-                            height: 100,
-                            width: 200,
+                            height: 90,
+                            width: 180,
                             decoration: pw.BoxDecoration(
-                              border: pw.Border.all(color: PdfColors.grey),
+                              border: pw.Border.all(color: PdfColors.grey600),
                             ),
                             child: pw.Image(
                               pw.MemoryImage(signatureBytes),
@@ -605,20 +621,24 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     );
   }
 
-  pw.Widget _construirFilaPdf(String etiqueta, String valor) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 3),
-      child: pw.Row(
-        children: [
-          pw.SizedBox(
-            width: 130,
-            child: pw.Text(etiqueta, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+  pw.TableRow _construirFilaTablaPdf(String etiqueta, String valor) {
+    return pw.TableRow(
+      children: [
+        pw.Padding(
+          padding: const pw.EdgeInsets.all(6),
+          child: pw.Text(
+            etiqueta,
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
           ),
-          pw.Expanded(
-            child: pw.Text(valor.isEmpty ? "-" : valor),
+        ),
+        pw.Padding(
+          padding: const pw.EdgeInsets.all(6),
+          child: pw.Text(
+            valor.isEmpty ? "-" : valor,
+            style: pw.TextStyle(fontSize: 10),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

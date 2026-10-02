@@ -21,6 +21,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
 
   // Controladores de texto para todos los campos
   final TextEditingController _fechaController = TextEditingController();
+  final TextEditingController _horaController = TextEditingController(); // <-- Nueva caja de hora independiente
   final TextEditingController _expedienteController = TextEditingController();
   final TextEditingController _marcaController = TextEditingController();
   final TextEditingController _placaController = TextEditingController();
@@ -32,7 +33,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
   final TextEditingController _destinoController = TextEditingController();
   final TextEditingController _asisteController = TextEditingController();
 
-  // Controlador para el recuadro de firma digital (con exportBackgroundColor transparente para evitar cajas)
+  // Controlador para el recuadro de firma digital
   final SignatureController _signatureController = SignatureController(
     penColor: Colors.black,
     penStrokeWidth: 3,
@@ -58,7 +59,17 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     final dia = ahora.day.toString().padLeft(2, '0');
     final mes = ahora.month.toString().padLeft(2, '0');
     final anio = ahora.year.toString();
+    
+    // Asignar fecha limpia (DD-MM-AAAA)
     _fechaController.text = "$dia-$mes-$anio";
+
+    // Asignar hora inicial en formato 12h (A.M. / P.M.)
+    int hora24 = ahora.hour;
+    int minuto = ahora.minute;
+    String periodo = hora24 >= 12 ? 'P.M.' : 'A.M.';
+    int hora12 = hora24 % 12;
+    if (hora12 == 0) hora12 = 12;
+    _horaController.text = "${hora12.toString().padLeft(2, '0')}:${minuto.toString().padLeft(2, '0')} $periodo";
 
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -85,11 +96,12 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
 
   void _evaluarEfectivoSegunSoat() {
     String fechaServicioTexto = _fechaController.text.trim();
-    String soatTexto = _soatController.text.trim();
-    
-    if (fechaServicioTexto.isEmpty || soatTexto.isEmpty) return;
+    if (fechaServicioTexto.isEmpty) return;
 
     try {
+      String soatTexto = _soatController.text.trim();
+      if (soatTexto.isEmpty) return;
+
       List<String> partesFecha = fechaServicioTexto.split('-');
       DateTime fechaServicio = DateTime(
         int.parse(partesFecha[2]),
@@ -116,11 +128,10 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     }
   }
 
-  Future<void> _seleccionarFecha(BuildContext context, TextEditingController controller) async {
+  Future<void> _seleccionarFecha(BuildContext context) async {
     DateTime fechaActual = DateTime.now();
-    
     try {
-      List<String> partes = controller.text.split('-');
+      List<String> partes = _fechaController.text.split('-');
       if (partes.length == 3) {
         fechaActual = DateTime(
           int.parse(partes[2]),
@@ -143,16 +154,34 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
       final anio = fechaSeleccionada.year.toString();
       
       setState(() {
-        controller.text = "$dia-$mes-$anio";
+        _fechaController.text = "$dia-$mes-$anio";
       });
 
       _evaluarEfectivoSegunSoat();
     }
   }
 
+  Future<void> _seleccionarHora(BuildContext context) async {
+    final TimeOfDay? horaSeleccionada = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+
+    if (horaSeleccionada != null) {
+      final hora12 = horaSeleccionada.hourOfPeriod == 0 ? 12 : horaSeleccionada.hourOfPeriod;
+      final minuto = horaSeleccionada.minute.toString().padLeft(2, '0');
+      final periodo = horaSeleccionada.period == DayPeriod.am ? 'A.M.' : 'P.M.';
+      
+      setState(() {
+        _horaController.text = "${hora12.toString().padLeft(2, '0')}:$minuto $periodo";
+      });
+    }
+  }
+
   @override
   void dispose() {
     _fechaController.dispose();
+    _horaController.dispose();
     _expedienteController.dispose();
     _marcaController.dispose();
     _placaController.dispose();
@@ -258,7 +287,23 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                     TextField(
                       controller: _soatController,
                       readOnly: true,
-                      onTap: () => _seleccionarFecha(context, _soatController),
+                      onTap: () async {
+                        DateTime? fechaSel = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2035),
+                        );
+                        if (fechaSel != null) {
+                          final dia = fechaSel.day.toString().padLeft(2, '0');
+                          final mes = fechaSel.month.toString().padLeft(2, '0');
+                          final anio = fechaSel.year.toString();
+                          setState(() {
+                            _soatController.text = "$dia-$mes-$anio";
+                          });
+                          _evaluarEfectivoSegunSoat();
+                        }
+                      },
                       decoration: InputDecoration(
                         labelText: "Vencimiento SOAT (DD-MM-AAAA)",
                         border: const OutlineInputBorder(),
@@ -267,7 +312,23 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(Icons.calendar_today, color: Colors.indigo.shade700),
-                          onPressed: () => _seleccionarFecha(context, _soatController),
+                          onPressed: () async {
+                            DateTime? fechaSel = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2035),
+                            );
+                            if (fechaSel != null) {
+                              final dia = fechaSel.day.toString().padLeft(2, '0');
+                              final mes = fechaSel.month.toString().padLeft(2, '0');
+                              final anio = fechaSel.year.toString();
+                              setState(() {
+                                _soatController.text = "$dia-$mes-$anio";
+                              });
+                              _evaluarEfectivoSegunSoat();
+                            }
+                          },
                         ),
                       ),
                     ),
@@ -322,19 +383,38 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
+                    // Caja Fecha del Servicio
                     TextField(
                       controller: _fechaController,
                       readOnly: true,
-                      onTap: () => _seleccionarFecha(context, _fechaController),
+                      onTap: () => _seleccionarFecha(context),
                       decoration: InputDecoration(
-                        labelText: "Fecha (DD-MM-AAAA)",
+                        labelText: "Fecha del Servicio",
                         border: const OutlineInputBorder(),
                         focusedBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(Icons.calendar_today, color: Colors.indigo.shade700),
-                          onPressed: () => _seleccionarFecha(context, _fechaController),
+                          onPressed: () => _seleccionarFecha(context),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    // Caja Hora independiente con formato am/pm
+                    TextField(
+                      controller: _horaController,
+                      readOnly: true,
+                      onTap: () => _seleccionarHora(context),
+                      decoration: InputDecoration(
+                        labelText: "Hora",
+                        border: const OutlineInputBorder(),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(Icons.access_time, color: Colors.indigo.shade700),
+                          onPressed: () => _seleccionarHora(context),
                         ),
                       ),
                     ),
@@ -449,7 +529,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                     fechaAAMMDD = "$anio$mes$dia";
                   }
                 } catch (e) {
-                  print("Error formateando fecha: $e");
+                  print("Error formateando fecha para nombre de archivo: $e");
                 }
 
                 String expedienteTexto = _expedienteController.text.trim();
@@ -516,6 +596,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                             },
                             children: [
                               _construirFilaTablaPdf("Fecha del Servicio", _fechaController.text),
+                              _construirFilaTablaPdf("Hora del Servicio", _horaController.text),
                               _construirFilaTablaPdf("Expediente", _expedienteController.text),
                               _construirFilaTablaPdf("Asegurado", _aseguradoController.text),
                               _construirFilaTablaPdf("Celular", _celularController.text),
@@ -548,9 +629,9 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                           ),
                           pw.SizedBox(height: 15),
                           
-                          // Imagen limpia sin cajas ni bordes
+                          // Imagen de la firma limpia
                           pw.SizedBox(
-                            height: 60,
+                            height: 65,
                             width: 160,
                             child: pw.Image(
                               pw.MemoryImage(signatureBytes),
@@ -579,12 +660,36 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   filename: nombreArchivo,
                 );
 
+                // ================= LIMPIAR CAMPOS DEL SERVICIO TRAS GENERAR PDF =================
+                setState(() {
+                  _expedienteController.clear();
+                  _aseguradoController.clear();
+                  _celularController.clear();
+                  _origenController.clear();
+                  _destinoController.clear();
+                  _signatureController.clear();
+                  
+                  // Restablecer fecha y hora actuales
+                  final ahora = DateTime.now();
+                  final dia = ahora.day.toString().padLeft(2, '0');
+                  final mes = ahora.month.toString().padLeft(2, '0');
+                  final anio = ahora.year.toString();
+                  _fechaController.text = "$dia-$mes-$anio";
+
+                  int hora24 = ahora.hour;
+                  int minuto = ahora.minute;
+                  String periodo = hora24 >= 12 ? 'P.M.' : 'A.M.';
+                  int hora12 = hora24 % 12;
+                  if (hora12 == 0) hora12 = 12;
+                  _horaController.text = "${hora12.toString().padLeft(2, '0')}:${minuto.toString().padLeft(2, '0')} $periodo";
+                });
+
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Generando PDF: $nombreArchivo')),
+                  SnackBar(content: Text('Planilla generada y formulario reiniciado: $nombreArchivo')),
                 );
               },
               icon: const Icon(Icons.save),
-              label: const Text("Guardار Planilla", style: TextStyle(fontSize: 18)),
+              label: const Text("Guardar Planilla", style: TextStyle(fontSize: 18)),
             ),
             const SizedBox(height: 40),
           ],

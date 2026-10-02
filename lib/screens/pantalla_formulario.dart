@@ -57,13 +57,24 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     setState(() {
       _marcaController.text = prefs.getString('vehiculo_marca') ?? '';
       _placaController.text = prefs.getString('vehiculo_placa') ?? '';
+      _soatController.text = prefs.getString('vehiculo_soat') ?? '';
       _asisteController.text = prefs.getString('servicio_asiste') ?? '';
     });
+
+    // Evaluar efectivo con los datos ya cargados
+    _evaluarEfectivoSegunSoat();
   }
 
-  Future<void> _guardarDatoPersistente(String clave, String valor) async {
+  Future<void> _guardarDatosPrestador() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(clave, valor);
+    await prefs.setString('vehiculo_marca', _marcaController.text.trim());
+    await prefs.setString('vehiculo_placa', _placaController.text.trim());
+    await prefs.setString('vehiculo_soat', _soatController.text.trim());
+    await prefs.setString('servicio_asiste', _asisteController.text.trim());
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Datos del prestador guardados correctamente')),
+    );
   }
 
   // Función para evaluar si la fecha del SOAT es posterior o igual a la fecha del servicio
@@ -234,25 +245,23 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    // Marca del Vehículo (Persistente)
+                    // Marca del Vehículo
                     _construirCampoConMic(
                       label: "Marca del Vehículo",
                       controller: _marcaController,
                       nombreCampo: "Marca",
-                      onChanged: (valor) => _guardarDatoPersistente('vehiculo_marca', valor),
                     ),
                     const SizedBox(height: 14),
 
-                    // Placa (Persistente)
+                    // Placa
                     _construirCampoConMic(
                       label: "Placa",
                       controller: _placaController,
                       nombreCampo: "Placa",
-                      onChanged: (valor) => _guardarDatoPersistente('vehiculo_placa', valor),
                     ),
                     const SizedBox(height: 14),
 
-                    // Vencimiento SOAT (Con DatePicker y validación cruzada)
+                    // Vencimiento SOAT (Ahora precargado y persistente)
                     TextField(
                       controller: _soatController,
                       readOnly: true,
@@ -271,7 +280,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Efectivo (Automático según las fechas)
+                    // Efectivo (Automático)
                     _construirCampoConMic(
                       label: "Efectivo (SI / NO)",
                       controller: _efectivoController,
@@ -280,12 +289,35 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Asiste (Persistente)
+                    // Asiste
                     _construirCampoConMic(
                       label: "Asiste",
                       controller: _asisteController,
                       nombreCampo: "Asiste",
-                      onChanged: (valor) => _guardarDatoPersistente('servicio_asiste', valor),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Botón para guardar todos los datos del prestador
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: Colors.indigo.shade50,
+                          foregroundColor: Colors.indigo.shade800,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(color: Colors.indigo.shade300),
+                          ),
+                        ),
+                        onPressed: _guardarDatosPrestador,
+                        icon: const Icon(Icons.save_alt, size: 20),
+                        label: const Text(
+                          "Guardar Datos del Prestador",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -305,7 +337,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    // Fecha (Con DatePicker y validación cruzada)
+                    // Fecha
                     TextField(
                       controller: _fechaController,
                       readOnly: true,
@@ -340,7 +372,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Celular (Numérico estricto, máximo 10 caracteres)
+                    // Celular
                     _construirCampoConMic(
                       label: "Celular",
                       controller: _celularController,
@@ -415,7 +447,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 ),
               ),
               onPressed: () async {
-                // 1. Validar firma obligatoria
                 if (_signatureController.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Por favor solicite la firma del pasajero')),
@@ -423,11 +454,9 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   return;
                 }
 
-                // 2. Obtener la imagen de la firma en bytes
                 final signatureBytes = await _signatureController.toPngBytes();
                 if (signatureBytes == null) return;
 
-                // 3. Formatear la fecha ingresada (DD-MM-AAAA) a AAMMDD para el nombre del archivo
                 String fechaTexto = _fechaController.text.trim();
                 String fechaAAMMDD = "000000";
                 try {
@@ -445,14 +474,11 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   print("Error formateando fecha para el archivo: $e");
                 }
 
-                // 4. Obtener número de expediente
                 String expedienteTexto = _expedienteController.text.trim();
                 if (expedienteTexto.isEmpty) expedienteTexto = "SinuNumero";
 
-                // 5. Construir nombre del archivo: planilla_aeropuerto_AAMMDD_ex12345.pdf
                 final String nombreArchivo = "planilla_aeropuerto_${fechaAAMMDD}_ex$expedienteTexto.pdf";
 
-                // 6. Diseñar el contenido del documento PDF
                 final pdf = pw.Document();
                 pdf.addPage(
                   pw.Page(
@@ -501,7 +527,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   ),
                 );
 
-                // 7. Lanzar el diálogo nativo para guardar o compartir el PDF
                 await Printing.sharePdf(
                   bytes: await pdf.save(),
                   filename: nombreArchivo,
@@ -521,7 +546,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     );
   }
 
-  // Widget auxiliar para los títulos de sección
   Widget _construirTituloSeccion(String titulo) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, top: 8.0, left: 4.0),
@@ -581,7 +605,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     );
   }
 
-  // Método auxiliar para estructurar las filas dentro del PDF
   pw.Widget _construirFilaPdf(String etiqueta, String valor) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(vertical: 3),

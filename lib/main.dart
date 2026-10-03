@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'screens/pantalla_formulario.dart';
 
 void main() {
@@ -33,9 +34,13 @@ class PantallaSplash extends StatefulWidget {
 }
 
 class _PantallaSplashState extends State<PantallaSplash> {
+  String _versionApp = '';
+
   @override
   void initState() {
     super.initState();
+    _obtenerVersion();
+
     // Espera 2 segundos y pasa automáticamente a la pantalla del formulario
     Future.delayed(const Duration(milliseconds: 2000), () {
       Navigator.pushReplacement(
@@ -45,18 +50,31 @@ class _PantallaSplashState extends State<PantallaSplash> {
     });
   }
 
+  Future<void> _obtenerVersion() async {
+    try {
+      final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      setState(() {
+        _versionApp = 'Versión ${packageInfo.version}';
+      });
+    } catch (e) {
+      setState(() {
+        _versionApp = 'Versión 1.0.0';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Contenido central (Título de la app)
+          // Contenido central (Título de la app y versión)
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
+                const Icon(
                   Icons.flight_takeoff,
                   size: 70,
                   color: Colors.blueAccent,
@@ -77,6 +95,16 @@ class _PantallaSplashState extends State<PantallaSplash> {
                     fontSize: 15,
                     color: Colors.grey,
                     letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Versión dinámica cargada desde el pubspec.yaml
+                Text(
+                  _versionApp,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade500,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],

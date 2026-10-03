@@ -55,23 +55,30 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
   }
 
   void _inicializarDatosAutomaticos() async {
+    final prefs = await SharedPreferences.getInstance();
+    
     final ahora = DateTime.now();
     final dia = ahora.day.toString().padLeft(2, '0');
     final mes = ahora.month.toString().padLeft(2, '0');
     final anio = ahora.year.toString();
 
     setState(() {
-      _fechaController.text = "$dia-$mes-$anio";
-      _horaController.text = "";
-    });
-
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
+      // Cargar datos del prestador
       _marcaController.text = prefs.getString('vehiculo_marca') ?? '';
       _placaController.text = prefs.getString('vehiculo_placa') ?? '';
       _soatController.text = prefs.getString('vehiculo_soat') ?? '';
       _asisteController.text = prefs.getString('servicio_asiste') ?? '';
+
+      // Cargar borrador de servicio si existe, sino poner fecha actual
+      _fechaController.text = prefs.getString('borrador_fecha') ?? "$dia-$mes-$anio";
+      _horaController.text = prefs.getString('borrador_hora') ?? '';
+      _expedienteController.text = prefs.getString('borrador_expediente') ?? '';
+      _aseguradoController.text = prefs.getString('borrador_asegurado') ?? '';
+      _celularController.text = prefs.getString('borrador_celular') ?? '';
+      _origenController.text = prefs.getString('borrador_origen') ?? '';
+      _destinoController.text = prefs.getString('borrador_destino') ?? '';
     });
+
     _evaluarEfectivoSegunSoat();
   }
 
@@ -86,6 +93,38 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Datos del prestador guardados correctamente')),
     );
+  }
+
+  // Método para guardar borrador del servicio anticipadamente
+  Future<void> _guardarBorradorServicio() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('borrador_fecha', _fechaController.text.trim());
+    await prefs.setString('borrador_hora', _horaController.text.trim());
+    await prefs.setString('borrador_expediente', _expedienteController.text.trim());
+    await prefs.setString('borrador_asegurado', _aseguradoController.text.trim());
+    await prefs.setString('borrador_celular', _celularController.text.trim());
+    await prefs.setString('borrador_origen', _origenController.text.trim());
+    await prefs.setString('borrador_destino', _destinoController.text.trim());
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Borrador del servicio guardado temporalmente'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  // Método para limpiar el borrador una vez generada la planilla exitosamente
+  Future<void> _limpiarBorradorServicio() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('borrador_fecha');
+    await prefs.remove('borrador_hora');
+    await prefs.remove('borrador_expediente');
+    await prefs.remove('borrador_asegurado');
+    await prefs.remove('borrador_celular');
+    await prefs.remove('borrador_origen');
+    await prefs.remove('borrador_destino');
   }
 
   void _evaluarEfectivoSegunSoat() {
@@ -445,6 +484,29 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                       controller: _destinoController,
                       nombreCampo: "Destino",
                     ),
+                    const SizedBox(height: 16),
+                    // NUEVO BOTÓN DE GUARDADO TEMPORAL INMEDIATAMENTE DESPUÉS DE LOS DATOS DEL SERVICIO
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: Colors.teal.shade50,
+                          foregroundColor: Colors.teal.shade800,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(color: Colors.teal.shade300),
+                          ),
+                        ),
+                        onPressed: _guardarBorradorServicio,
+                        icon: const Icon(Icons.bookmark_added, size: 20),
+                        label: const Text(
+                          "Guardar Borrador del Servicio",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -488,7 +550,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
 
             const SizedBox(height: 20),
 
-            // BOTÓN GUARDAR PLANILLA Y GENERAR PDF CON FORMATO: AAMMDD nombreusuario expediente
+            // BOTÓN GUARDAR PLANILLA Y GENERAR PDF (INALTERADO EN SU FUNCIONALIDAD)
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
@@ -666,7 +728,9 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   filename: nombreArchivo,
                 );
 
-                // ================= RESTABLECER DESPUÉS DE GUARDAR =================
+                // ================= RESTABLECER DESPUÉS DE GUARDAR Y LIMPIAR BORRADOR =================
+                await _limpiarBorradorServicio();
+
                 final ahoraPost = DateTime.now();
                 final diaPost = ahoraPost.day.toString().padLeft(2, '0');
                 final mesPost = ahoraPost.month.toString().padLeft(2, '0');

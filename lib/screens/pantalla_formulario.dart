@@ -3,12 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signature/signature.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:planilla_aeropuerto/services/pdf_service.dart';
 
 class PantallaFormulario extends StatefulWidget {
-  const PantallaFormulario({Key? key}) : super(key: key);
+  const PantallaFormulario({super.key});
 
   @override
   State<PantallaFormulario> createState() => _PantallaFormularioState();
@@ -19,7 +18,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
   bool _isListening = false;
   String _campoActivo = "";
 
-  // Controladores de texto para todos los campos
   final TextEditingController _fechaController = TextEditingController();
   final TextEditingController _horaController = TextEditingController();
   final TextEditingController _expedienteController = TextEditingController();
@@ -33,7 +31,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
   final TextEditingController _destinoController = TextEditingController();
   final TextEditingController _asisteController = TextEditingController();
 
-  // Controlador para el recuadro de firma digital
   final SignatureController _signatureController = SignatureController(
     penColor: Colors.black,
     penStrokeWidth: 3,
@@ -63,13 +60,11 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     final anio = ahora.year.toString();
 
     setState(() {
-      // Cargar datos del prestador
       _marcaController.text = prefs.getString('vehiculo_marca') ?? '';
       _placaController.text = prefs.getString('vehiculo_placa') ?? '';
       _soatController.text = prefs.getString('vehiculo_soat') ?? '';
       _asisteController.text = prefs.getString('servicio_asiste') ?? '';
 
-      // Cargar borrador de servicio si existe, sino poner fecha actual
       _fechaController.text = prefs.getString('borrador_fecha') ?? "$dia-$mes-$anio";
       _horaController.text = prefs.getString('borrador_hora') ?? '';
       _expedienteController.text = prefs.getString('borrador_expediente') ?? '';
@@ -95,7 +90,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     );
   }
 
-  // Método para guardar borrador del servicio anticipadamente
   Future<void> _guardarBorradorServicio() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('borrador_fecha', _fechaController.text.trim());
@@ -115,7 +109,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     );
   }
 
-  // Método para limpiar el borrador una vez generada la planilla exitosamente
   Future<void> _limpiarBorradorServicio() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('borrador_fecha');
@@ -229,7 +222,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     super.dispose();
   }
 
-  void _escucharParaCampo(TextEditingController controller, String nombreCampo, {Function(String)? onTextChanged}) async {
+  void _escucharParaCampo(TextEditingController controller, String nombreCampo) async {
     bool disponible = await _speech.initialize(
       onStatus: (val) => debugPrint('estado: $val'),
       onError: (val) => debugPrint('error: $val'),
@@ -245,9 +238,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
         onResult: (val) {
           setState(() {
             controller.text = val.recognizedWords;
-            if (onTextChanged != null) {
-              onTextChanged(val.recognizedWords);
-            }
           });
         },
       );
@@ -260,6 +250,57 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
       _campoActivo = "";
     });
     _speech.stop();
+  }
+
+  Widget _construirTituloSeccion(String titulo) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Text(
+        titulo,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Colors.indigo.shade800,
+        ),
+      ),
+    );
+  }
+
+  Widget _construirCampoConMic({
+    required String label,
+    required TextEditingController controller,
+    required String nombreCampo,
+    TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+    bool habilitarMic = true,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
+        ),
+        suffixIcon: habilitarMic
+            ? IconButton(
+                icon: Icon(
+                  _isListening && _campoActivo == nombreCampo ? Icons.mic : Icons.mic_none,
+                  color: _isListening && _campoActivo == nombreCampo ? Colors.red : Colors.indigo.shade700,
+                ),
+                onPressed: () {
+                  if (_isListening && _campoActivo == nombreCampo) {
+                    _detenerEscucha();
+                  } else {
+                    _escucharParaCampo(controller, nombreCampo);
+                  }
+                },
+              )
+            : null,
+      ),
+    );
   }
 
   @override
@@ -296,7 +337,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 ),
               ),
 
-            // GRUPO 1: DATOS DEL PRESTADOR
             _construirTituloSeccion("Datos del Prestador"),
             Card(
               elevation: 2,
@@ -407,7 +447,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
 
             const SizedBox(height: 20),
 
-            // GRUPO 2: DATOS DEL SERVICIO
             _construirTituloSeccion("Datos del Servicio"),
             Card(
               elevation: 2,
@@ -485,7 +524,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                       nombreCampo: "Destino",
                     ),
                     const SizedBox(height: 16),
-                    // NUEVO BOTÓN DE GUARDADO TEMPORAL INMEDIATAMENTE DESPUÉS DE LOS DATOS DEL SERVICIO
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -516,7 +554,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
             const Divider(thickness: 2),
             const SizedBox(height: 10),
 
-            // SECCIÓN DE FIRMA Y DISCLAIMER
             const Text(
               "Firma del Pasajero",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -550,7 +587,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
 
             const SizedBox(height: 20),
 
-            // BOTÓN GUARDAR PLANILLA Y GENERAR PDF (INALTERADO EN SU FUNCIONALIDAD)
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
@@ -572,7 +608,6 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 final signatureBytes = await _signatureController.toPngBytes();
                 if (signatureBytes == null) return;
 
-                // 1. Formatear Fecha a AAMMDD
                 String fechaTexto = _fechaController.text.trim();
                 String fechaAAMMDD = "000000";
                 try {
@@ -588,147 +623,34 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   debugPrint("Error formateando fecha para nombre de archivo: $e");
                 }
 
-                // 2. Obtener Nombre del Usuario / Asegurado
                 String nombreUsuario = _aseguradoController.text.trim();
                 if (nombreUsuario.isEmpty) {
                   nombreUsuario = "Usuario";
                 }
 
-                // 3. Obtener Expediente
                 String expedienteTexto = _expedienteController.text.trim();
                 if (expedienteTexto.isEmpty) expedienteTexto = "SinExpediente";
 
-                // 4. Nombre exacto solicitado: AAMMDD nombreusuario expediente.pdf
                 final String nombreArchivo = "$fechaAAMMDD $nombreUsuario $expedienteTexto.pdf";
 
-                // CARGAR LOGO DESDE ASSETS
-                pw.ImageProvider? logoImage;
-                try {
-                  final imageByteData = await rootBundle.load('assets/images/logo_2m.png');
-                  logoImage = pw.MemoryImage(imageByteData.buffer.asUint8List());
-                } catch (e) {
-                  debugPrint("No se pudo cargar el logo de assets: $e");
-                }
-
-                final pdf = pw.Document();
-                pdf.addPage(
-                  pw.Page(
-                    pageFormat: PdfPageFormat.letter,
-                    margin: const pw.EdgeInsets.all(32),
-                    build: (pw.Context context) {
-                      return pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          // ================= ENCABEZADO CON LOGO Y TÍTULO =================
-                          pw.Row(
-                            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: pw.CrossAxisAlignment.center,
-                            children: [
-                              if (logoImage != null)
-                                pw.SizedBox(
-                                  width: 70,
-                                  height: 70,
-                                  child: pw.Image(logoImage, fit: pw.BoxFit.contain),
-                                )
-                              else
-                                pw.SizedBox(
-                                  width: 70,
-                                  height: 70,
-                                  child: pw.Text("2M Global", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
-                                ),
-                              
-                              pw.Expanded(
-                                child: pw.Center(
-                                  child: pw.Text(
-                                    "SATISFACCIÓN DEL CLIENTE",
-                                    style: pw.TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: pw.FontWeight.bold,
-                                      color: PdfColors.indigo800,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          pw.SizedBox(height: 15),
-                          pw.Divider(thickness: 1.5, color: PdfColors.indigo800),
-                          pw.SizedBox(height: 15),
-
-                          // ================= TABLA DE DATOS =================
-                          pw.Table(
-                            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
-                            columnWidths: {
-                              0: const pw.FlexColumnWidth(1.2),
-                              1: const pw.FlexColumnWidth(2),
-                            },
-                            children: [
-                              _construirFilaTablaPdf("Fecha del Servicio", _fechaController.text),
-                              _construirFilaTablaPdf("Hora del Servicio", _horaController.text),
-                              _construirFilaTablaPdf("Expediente", _expedienteController.text),
-                              _construirFilaTablaPdf("Asegurado", _aseguradoController.text),
-                              _construirFilaTablaPdf("Celular", _celularController.text),
-                              _construirFilaTablaPdf("Origen", _origenController.text),
-                              _construirFilaTablaPdf("Destino", _destinoController.text),
-                              _construirFilaTablaPdf("Marca del Vehículo", _marcaController.text),
-                              _construirFilaTablaPdf("Placa", _placaController.text),
-                              _construirFilaTablaPdf("Vencimiento SOAT", _soatController.text),
-                              _construirFilaTablaPdf("Efectivo", _efectivoController.text),
-                              _construirFilaTablaPdf("Asistente / Conductor", _asisteController.text),
-                            ],
-                          ),
-
-                          pw.SizedBox(height: 15),
-
-                          // ================= SECCIÓN DE FIRMA Y DISCLAIMER EN EL PDF =================
-                          pw.Text(
-                            "Firma del Pasajero:",
-                            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
-                          ),
-                          pw.SizedBox(height: 6),
-                          pw.Text(
-                            _textoDisclaimer,
-                            style: pw.TextStyle(
-                              fontSize: 7.5,
-                              color: PdfColors.grey700,
-                              lineSpacing: 1.2,
-                            ),
-                            textAlign: pw.TextAlign.justify,
-                          ),
-                          pw.SizedBox(height: 15),
-                          
-                          // Imagen de la firma limpia
-                          pw.SizedBox(
-                            height: 65,
-                            width: 160,
-                            child: pw.Image(
-                              pw.MemoryImage(signatureBytes),
-                              fit: pw.BoxFit.contain,
-                            ),
-                          ),
-                          
-                          // Línea guía tradicional inferior
-                          pw.Text(
-                            "________________________________________",
-                            style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
-                          ),
-                          pw.SizedBox(height: 2),
-                          pw.Text(
-                            "Firma / Aceptado",
-                            style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+                final pdfBytes = await PdfPlanillaService.generarPlanillaPDF(
+                  fecha: _fechaController.text,
+                  expediente: _expedienteController.text,
+                  placa: _placaController.text,
+                  marca: _marcaController.text,
+                  soat: _soatController.text,
+                  asegurado: _aseguradoController.text,
+                  celular: _celularController.text,
+                  origen: _origenController.text,
+                  destino: _destinoController.text,
+                  firmaBytes: signatureBytes,
                 );
 
                 await Printing.sharePdf(
-                  bytes: await pdf.save(),
+                  bytes: pdfBytes,
                   filename: nombreArchivo,
                 );
 
-                // ================= RESTABLECER DESPUÉS DE GUARDAR Y LIMPIAR BORRADOR =================
                 await _limpiarBorradorServicio();
 
                 final ahoraPost = DateTime.now();
@@ -746,101 +668,17 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   _destinoController.clear();
                   _signatureController.clear();
                 });
-                
-                _evaluarEfectivoSegunSoat();
-
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Planilla generada: $nombreArchivo')),
-                );
               },
-              icon: const Icon(Icons.save),
-              label: const Text("Guardar Planilla", style: TextStyle(fontSize: 18)),
+              icon: const Icon(Icons.picture_as_pdf),
+              label: const Text(
+                "Generar y Compartir Planilla",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 30),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _construirTituloSeccion(String titulo) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0, top: 8.0, left: 4.0),
-      child: Text(
-        titulo,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Colors.indigo.shade800,
-        ),
-      ),
-    );
-  }
-
-  Widget _construirCampoConMic({
-    required String label,
-    required TextEditingController controller,
-    required String nombreCampo,
-    bool habilitarMic = true,
-    Function(String)? onChanged,
-    TextInputType? keyboardType,
-    List<TextInputFormatter>? inputFormatters,
-  }) {
-    bool esteCampoEstaEscuchando = _isListening && _campoActivo == nombreCampo;
-
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
-        ),
-        suffixIcon: habilitarMic
-            ? IconButton(
-                icon: Icon(
-                  esteCampoEstaEscuchando ? Icons.mic : Icons.mic_none,
-                  color: esteCampoEstaEscuchando ? Colors.red : Colors.grey,
-                ),
-                onPressed: () {
-                  if (esteCampoEstaEscuchando) {
-                    _detenerEscucha();
-                  } else {
-                    _escucharParaCampo(
-                      controller, 
-                      nombreCampo, 
-                      onTextChanged: onChanged,
-                    );
-                  }
-                },
-              )
-            : null,
-      ),
-    );
-  }
-
-  pw.TableRow _construirFilaTablaPdf(String etiqueta, String valor) {
-    return pw.TableRow(
-      children: [
-        pw.Padding(
-          padding: const pw.EdgeInsets.all(6),
-          child: pw.Text(
-            etiqueta,
-            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
-          ),
-        ),
-        pw.Padding(
-          padding: const pw.EdgeInsets.all(6),
-          child: pw.Text(
-            valor.isEmpty ? "-" : valor,
-            style: pw.TextStyle(fontSize: 10),
-          ),
-        ),
-      ],
     );
   }
 }

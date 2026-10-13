@@ -18,6 +18,8 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
   bool _isListening = false;
   String _campoActivo = "";
 
+  String _estadoServicio = "Efectivo";
+
   final TextEditingController _fechaController = TextEditingController();
   final TextEditingController _horaController = TextEditingController();
   final TextEditingController _expedienteController = TextEditingController();
@@ -550,7 +552,48 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
               ),
             ),
             
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
+
+            // --- SECCIÓN AGREGADA: Estado del Servicio ---
+            _construirTituloSeccion("Estado del Servicio"),
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    ChoiceChip(
+                      label: const Text("Efectivo"),
+                      selected: _estadoServicio == "Efectivo",
+                      selectedColor: Colors.green.shade100,
+                      onSelected: (selected) {
+                        if (selected) setState(() => _estadoServicio = "Efectivo");
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text("Fallido"),
+                      selected: _estadoServicio == "Fallido",
+                      selectedColor: Colors.orange.shade100,
+                      onSelected: (selected) {
+                        if (selected) setState(() => _estadoServicio = "Fallido");
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text("Cancelado"),
+                      selected: _estadoServicio == "Cancelado",
+                      selectedColor: Colors.red.shade100,
+                      onSelected: (selected) {
+                        if (selected) setState(() => _estadoServicio = "Cancelado");
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
             const Divider(thickness: 2),
             const SizedBox(height: 10),
 
@@ -597,16 +640,18 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 ),
               ),
               onPressed: () async {
-                if (_signatureController.isEmpty) {
+                if (_estadoServicio == "Efectivo" && _signatureController.isEmpty) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Por favor solicite la firma del pasajero')),
+                    const SnackBar(content: Text('Por favor solicite la firma del pasajero para servicios efectivos')),
                   );
                   return;
                 }
 
-                final signatureBytes = await _signatureController.toPngBytes();
-                if (signatureBytes == null) return;
+                Uint8List? signatureBytes;
+                if (!_signatureController.isEmpty) {
+                  signatureBytes = await _signatureController.toPngBytes();
+                }
 
                 String fechaTexto = _fechaController.text.trim();
                 String fechaAAMMDD = "000000";
@@ -643,7 +688,8 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   celular: _celularController.text,
                   origen: _origenController.text,
                   destino: _destinoController.text,
-                  firmaBytes: signatureBytes,
+                  estadoServicio: _estadoServicio,
+                  firmaBytes: signatureBytes ?? Uint8List(0),
                 );
 
                 await Printing.sharePdf(
@@ -667,6 +713,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                   _origenController.clear();
                   _destinoController.clear();
                   _signatureController.clear();
+                  _estadoServicio = "Efectivo";
                 });
               },
               icon: const Icon(Icons.picture_as_pdf),

@@ -14,6 +14,7 @@ class PdfPlanillaService {
     required String celular,
     required String origen,
     required String destino,
+    required String estadoServicio,
     required Uint8List firmaBytes,
   }) async {
     final pdf = pw.Document();
@@ -21,7 +22,22 @@ class PdfPlanillaService {
     final ByteData bytes = await rootBundle.load('assets/images/PLANILLAS DE SATISFACCION.jpg');
     final Uint8List imageBytes = bytes.buffer.asUint8List();
     final pw.MemoryImage fondoPlantilla = pw.MemoryImage(imageBytes);
-    final pw.MemoryImage firmaImagen = pw.MemoryImage(firmaBytes);
+    
+    // Solo cargamos la imagen de la firma si hay bytes y el servicio es efectivo con firma válida
+    pw.MemoryImage? firmaImagen;
+    if (firmaBytes.isNotEmpty && estadoServicio == "Efectivo") {
+      firmaImagen = pw.MemoryImage(firmaBytes);
+    }
+
+    // Determinamos la posición horizontal (left) para la "X" según el estado del servicio.
+    // (Nota: Estos valores de 'left' aproximados se ajustarán según la ubicación de las casillas en tu plantilla, 
+    // partiendo de la referencia central que tenías en top: 197).
+    double xPositionLeft = 340; // Valor por defecto (ej. Fallido al centro)
+    if (estadoServicio == "Efectivo") {
+      xPositionLeft = 280; // Ajusta este valor hacia la izquierda si la casilla de efectivo está más allá
+    } else if (estadoServicio == "Cancelado") {
+      xPositionLeft = 400; // Ajusta este valor hacia la derecha si la casilla de cancelado está más acá
+    }
 
     pdf.addPage(
       pw.Page(
@@ -38,13 +54,11 @@ class PdfPlanillaService {
               pw.Positioned(
                 left: 193,
                 top: 142,
-                //OK
                 child: pw.Text(fecha, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
               ),
               pw.Positioned(
                 left: 340,
                 top: 127,
-                //OK
                 child: pw.Text(expediente, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
               ),
 
@@ -52,30 +66,37 @@ class PdfPlanillaService {
               pw.Positioned(
                 left: 340,  
                 top: 141,
-                //OK 
-                child: pw.Text(placa, style: pw.TextStyle(fontSize: 10)), //OK
+                child: pw.Text(placa, style: pw.TextStyle(fontSize: 10)),
               ),
               pw.Positioned(
                 left: 163,
                 top: 156, 
-                //OK
-                child: pw.Text(marca, style: pw.TextStyle(fontSize: 10)), //OK
+                child: pw.Text(marca, style: pw.TextStyle(fontSize: 10)),
               ),
               pw.Positioned(
                 left: 193,
                 top: 197,
                 child: pw.Text(soat, style: pw.TextStyle(fontSize: 10)),
               ),
+              
+              // --- X del Estado del Servicio (Efectivo / Fallido / Cancelado) ---
+              pw.Positioned(
+                left: xPositionLeft,
+                top: 197, // Misma altura de la línea del SOAT
+                child: pw.Text(
+                  "X", 
+                  style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                ),
+              ),
+
               pw.Positioned(
                 left: 163,
                 top: 170,
-                //OK
                 child: pw.Text(asegurado, style: pw.TextStyle(fontSize: 10)),
               ),
               pw.Positioned(
                 left: 340,
                 top: 157,
-                //OK
                 child: pw.Text(celular, style: pw.TextStyle(fontSize: 10)),
               ),
 
@@ -83,26 +104,25 @@ class PdfPlanillaService {
               pw.Positioned(
                 left: 163,
                 top: 216,
-                //OK
                 child: pw.Text(origen, style: pw.TextStyle(fontSize: 10)),
               ),
               pw.Positioned(
                 left: 163,
                 top: 230,
-                //OK
                 child: pw.Text(destino, style: pw.TextStyle(fontSize: 10)),
               ),
 
-              // --- Firma del Pasajero/Asegurado ---
-              pw.Positioned(
-                left: 150,
-                top: 490,
-                child: pw.SizedBox(
-                  width: 180,
-                  height: 70,
-                  child: pw.Image(firmaImagen, fit: pw.BoxFit.contain),
+              // --- Firma del Pasajero/Asegurado (Solo si existe imagen y es efectivo) ---
+              if (firmaImagen != null)
+                pw.Positioned(
+                  left: 150,
+                  top: 490,
+                  child: pw.SizedBox(
+                    width: 180,
+                    height: 70,
+                    child: pw.Image(firmaImagen, fit: pw.BoxFit.contain),
+                  ),
                 ),
-              ),
             ],
           );
         },
@@ -112,3 +132,4 @@ class PdfPlanillaService {
     return pdf.save();
   }
 }
+

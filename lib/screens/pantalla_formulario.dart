@@ -4,6 +4,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signature/signature.dart';
 import 'package:printing/printing.dart';
+import 'package:url_launcher/url_launcher.dart'; // <--- Importamos url_launcher para Waze
 import 'package:planilla_aeropuerto/services/pdf_service.dart';
 
 class PantallaFormulario extends StatefulWidget {
@@ -122,6 +123,71 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     await prefs.remove('borrador_destino');
   }
 
+  // --- Función mejorada para abrir Waze sin errores de permisos ---
+/*  Future<void> _abrirEnWaze(String direccion) async {
+    if (direccion.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor ingresa o dicta una dirección primero')),
+      );
+      return;
+    }
+
+    final query = Uri.encodeComponent(direccion);
+    final uriWazeNativo = Uri.parse("waze://?q=$query&navigate=yes");
+    final uriWazeWeb = Uri.parse("https://waze.com/ul?q=$query&navigate=yes");
+    final uriMapsWeb = Uri.parse("https://www.google.com/maps/search/?api=1&query=$query");
+
+    try {
+      if (await canLaunchUrl(uriWazeNativo)) {
+        await launchUrl(uriWazeNativo, mode: LaunchMode.externalApplication);
+      } else if (await canLaunchUrl(uriWazeWeb)) {
+        await launchUrl(uriWazeWeb, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(uriMapsWeb, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      try {
+        await launchUrl(uriWazeWeb, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al abrir la navegación: $e')),
+        );
+      }
+    }
+  }
+*/
+  
+  Future<void> _abrirEnWaze(String direccion) async {
+    if (direccion.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor ingresa o dicta una dirección primero')),
+      );
+      return;
+    }
+
+    final query = Uri.encodeComponent(direccion);
+    final uriWazeNativo = Uri.parse("waze://?q=$query&navigate=yes");
+    final uriWazeWeb = Uri.parse("https://waze.com/ul?q=$query&navigate=yes");
+
+    try {
+      if (await canLaunchUrl(uriWazeNativo)) {
+        await launchUrl(uriWazeNativo, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(uriWazeWeb, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      try {
+        await launchUrl(uriWazeWeb, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo abrir Waze: $e')),
+        );
+      }
+    }
+  }
+  
   void _evaluarEfectivoSegunSoat() {
     String fechaServicioTexto = _fechaController.text.trim();
     if (fechaServicioTexto.isEmpty) return;
@@ -301,6 +367,49 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                 },
               )
             : null,
+      ),
+    );
+  }
+
+  // --- Campo especial para Origen y Destino con Waze + Micrófono ---
+  Widget _construirCampoRuta({
+    required String label,
+    required TextEditingController controller,
+    required String nombreCampo,
+  }) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
+        ),
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Botón de Waze
+            IconButton(
+              icon: const Icon(Icons.navigation, color: Colors.blue),
+              tooltip: "Abrir en Waze",
+              onPressed: () => _abrirEnWaze(controller.text),
+            ),
+            // Botón de Micrófono
+            IconButton(
+              icon: Icon(
+                _isListening && _campoActivo == nombreCampo ? Icons.mic : Icons.mic_none,
+                color: _isListening && _campoActivo == nombreCampo ? Colors.red : Colors.indigo.shade700,
+              ),
+              onPressed: () {
+                if (_isListening && _campoActivo == nombreCampo) {
+                  _detenerEscucha();
+                } else {
+                  _escucharParaCampo(controller, nombreCampo);
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -514,13 +623,15 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    _construirCampoConMic(
+                    // Usamos el campo con Waze para Origen
+                    _construirCampoRuta(
                       label: "Origen",
                       controller: _origenController,
                       nombreCampo: "Origen",
                     ),
                     const SizedBox(height: 14),
-                    _construirCampoConMic(
+                    // Usamos el campo con Waze para Destino
+                    _construirCampoRuta(
                       label: "Destino",
                       controller: _destinoController,
                       nombreCampo: "Destino",
@@ -554,7 +665,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
             
             const SizedBox(height: 20),
 
-            // --- SECCIÓN AGREGADA: Estado del Servicio ---
+            // --- SECCIÓN: Estado del Servicio ---
             _construirTituloSeccion("Estado del Servicio"),
             Card(
               elevation: 2,
@@ -729,3 +840,4 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
     );
   }
 }
+

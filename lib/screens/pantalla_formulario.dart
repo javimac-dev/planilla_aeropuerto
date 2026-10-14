@@ -124,39 +124,7 @@ class _PantallaFormularioState extends State<PantallaFormulario> {
   }
 
   // --- Función mejorada para abrir Waze sin errores de permisos ---
-/*  Future<void> _abrirEnWaze(String direccion) async {
-    if (direccion.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor ingresa o dicta una dirección primero')),
-      );
-      return;
-    }
 
-    final query = Uri.encodeComponent(direccion);
-    final uriWazeNativo = Uri.parse("waze://?q=$query&navigate=yes");
-    final uriWazeWeb = Uri.parse("https://waze.com/ul?q=$query&navigate=yes");
-    final uriMapsWeb = Uri.parse("https://www.google.com/maps/search/?api=1&query=$query");
-
-    try {
-      if (await canLaunchUrl(uriWazeNativo)) {
-        await launchUrl(uriWazeNativo, mode: LaunchMode.externalApplication);
-      } else if (await canLaunchUrl(uriWazeWeb)) {
-        await launchUrl(uriWazeWeb, mode: LaunchMode.externalApplication);
-      } else {
-        await launchUrl(uriMapsWeb, mode: LaunchMode.externalApplication);
-      }
-    } catch (e) {
-      try {
-        await launchUrl(uriWazeWeb, mode: LaunchMode.externalApplication);
-      } catch (_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al abrir la navegación: $e')),
-        );
-      }
-    }
-  }
-*/
   
   Future<void> _abrirEnWaze(String direccion) async {
     if (direccion.trim().isEmpty) {

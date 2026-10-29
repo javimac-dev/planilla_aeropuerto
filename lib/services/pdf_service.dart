@@ -74,10 +74,8 @@ class PdfPlanillaService {
               // --- Fecha del Servicio Encajonada ---
               pw.Positioned(left: 172, top: 142, child: pw.Text(fechaDigitos[0], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
               pw.Positioned(left: 181, top: 142, child: pw.Text(fechaDigitos[1], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
-              // Mes corrido 5px más a la derecha (202 + 5 = 207, 211 + 5 = 216)
               pw.Positioned(left: 207, top: 142, child: pw.Text(fechaDigitos[2], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
               pw.Positioned(left: 216, top: 142, child: pw.Text(fechaDigitos[3], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
-              // Año corrido 20px a la derecha (222 + 20 = 242, 231 + 20 = 251)
               pw.Positioned(left: 242, top: 142, child: pw.Text(fechaDigitos[4], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
               pw.Positioned(left: 251, top: 142, child: pw.Text(fechaDigitos[5], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
 
@@ -99,13 +97,13 @@ class PdfPlanillaService {
                 child: pw.Text(marca, style: pw.TextStyle(fontSize: 10)),
               ),
 
-              // --- Vencimiento SOAT Encajonado ---
-              pw.Positioned(left: 172, top: 182, child: pw.Text(soatDigitos[0], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
-              pw.Positioned(left: 181, top: 182, child: pw.Text(soatDigitos[1], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
-              pw.Positioned(left: 207, top: 182, child: pw.Text(soatDigitos[2], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
-              pw.Positioned(left: 216, top: 182, child: pw.Text(soatDigitos[3], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
-              pw.Positioned(left: 242, top: 182, child: pw.Text(soatDigitos[4], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
-              pw.Positioned(left: 251, top: 182, child: pw.Text(soatDigitos[5], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+              // --- Vencimiento SOAT Encajonado (Alineado en top: 197) ---
+              pw.Positioned(left: 172, top: 197, child: pw.Text(soatDigitos[0], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+              pw.Positioned(left: 181, top: 197, child: pw.Text(soatDigitos[1], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+              pw.Positioned(left: 207, top: 197, child: pw.Text(soatDigitos[2], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+              pw.Positioned(left: 216, top: 197, child: pw.Text(soatDigitos[3], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+              pw.Positioned(left: 242, top: 197, child: pw.Text(soatDigitos[4], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+              pw.Positioned(left: 251, top: 197, child: pw.Text(soatDigitos[5], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
               
               // --- X del Estado del Servicio (Efectivo / Fallido / Cancelado) ---
               pw.Positioned(
